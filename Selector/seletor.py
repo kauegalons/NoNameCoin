@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # Caminho para o banco de dados
-db_path = os.path.join(os.getcwd(), 'seletor/bank')
+db_path = os.path.join(os.getcwd(), 'Selector/bank')
 db_file = 'seletor.db'
 if not os.path.exists(db_path):
     os.makedirs(db_path)
