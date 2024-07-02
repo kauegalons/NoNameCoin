@@ -11,9 +11,9 @@ response = requests.post('http://localhost:5000/cliente/Gabriel/1234/500')
 print(response.text)
 
 #Editando clientes
-response = requests.post('http://localhost:5000/cliente/1/250')
+response = requests.post('http://localhost:5000/cliente/1/100')
 print(response.text)
-response = requests.post('http://localhost:5000/cliente/2/300')
+response = requests.post('http://localhost:5000/cliente/2/450')
 print(response.text)
 
 #Deletando clientes
@@ -37,6 +37,8 @@ print(response.text)
 #Deletando seletores
 response = requests.delete('http://localhost:5000/seletor/2')
 print(response.text)
+
+
 
 #Get clientes
 response = requests.get('http://localhost:5000/cliente/3')
