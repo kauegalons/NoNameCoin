@@ -50,7 +50,7 @@ def validador():
     print(unique_keys)
     print(unique_keys.get(validator_id))
     if unique_key != unique_keys.get(validator_id):
-        print("vtnc")
+        print("teste")
         return jsonify({"status": 2, "message": "Chave única inválida"}), 400
     print(5)
     current_time = datetime.datetime.now()
