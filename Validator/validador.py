@@ -50,7 +50,7 @@ def validador():
     print(unique_keys)
     print(unique_keys.get(validator_id))
     if unique_key != unique_keys.get(validator_id):
-        print("teste")
+        #print("teste")
         return jsonify({"status": 2, "message": "Chave única inválida"}), 400
     print(5)
     current_time = datetime.datetime.now()
@@ -82,7 +82,7 @@ def validador():
 
 @app.route('/validador/register_key', methods=['POST'])
 def register_key():
-    print("aaaaaaaaaaa")
+    #print("teste")
     data = request.json
     validator_id = data['validator_id']
     unique_key = data['unique_key']
