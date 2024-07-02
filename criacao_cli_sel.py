@@ -3,11 +3,11 @@ import requests
 #CLIENTES
 
 #Registrando clientes
-response = requests.post('http://localhost:5000/cliente/pinto/1234/500')
+response = requests.post('http://localhost:5000/cliente/leo/1234/500')
 print(response.text)
-response = requests.post('http://localhost:5000/cliente/cu/1234/500')
+response = requests.post('http://localhost:5000/cliente/kaue/1234/500')
 print(response.text)
-response = requests.post('http://localhost:5000/cliente/fds/1234/500')
+response = requests.post('http://localhost:5000/cliente/Gabriel/1234/500')
 print(response.text)
 
 #Editando clientes
