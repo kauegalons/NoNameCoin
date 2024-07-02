@@ -1,6 +1,17 @@
 # NoNameCoin
 Este projeto foi desenvolvido em Python utilizando Flask e SQLite para criar um sistema de cadastro de validadores para a moeda fictícia NoNameCoin.
 
+Objetivo: 
+Desenvolver um Sistema Distribuído capaz de simular o processo de validação por consenso de uma 
+moeda digital, aqui denominada NoNameCoin;
+
+
+Colaboradores:
+Kauê Galon Silva
+Leonardo Kenji
+Gabriel Ziliotto
+
+
 Pré-requisitos:
 Python 3.x instalado.
 Bibliotecas Python necessárias listadas no arquivo requirements.txt.
