@@ -46,8 +46,6 @@ def validador():
     initialize_account(receiver)
 
     # Verificar chave única
-    print(unique_key)
-    print(unique_keys.get(validator_id))
     if unique_key != unique_keys.get(validator_id):
         return jsonify({"status": 2, "message": "Chave única inválida"}), 400
     current_time = datetime.datetime.now()
@@ -77,7 +75,7 @@ def validador():
 @app.route('/validador/register_key', methods=['POST'])
 def register_key():
     data = request.json
-    validator_id = data['validator_id']
+    validator_id = data['validator_id'] 
     unique_key = data['unique_key']
     unique_keys.update({validator_id : unique_key})  # Armazenar a chave única associada ao ID do validador
     return jsonify({"status": 1, "message": "Chave registrada com sucesso"}), 200

@@ -160,9 +160,8 @@ def select_validators():
                 'validator_id': validador_id,
                 'unique_key': validador.unique_key
             }
-            print(data)
             response = requests.post(url, json=data)
-            # print("aaaaaaaaaaaaaa: ", response.json())
+          
 
             if response.status_code != 200:
                 print(f"Erro ao comunicar com o validador {validador.name}: {response.status_code}")
