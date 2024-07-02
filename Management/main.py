@@ -80,18 +80,18 @@ def InserirCliente(nome, senha, qtdMoeda):
 @app.route('/cliente/<int:id>', methods = ['GET'])
 def UmCliente(id):
     if(request.method == 'GET'):
-        objeto = Cliente.query.get(id)
+        objeto = db.session.get(Cliente, id)
         return jsonify(objeto)
     else:
         return jsonify(['Method Not Allowed'])
 
-@app.route('/cliente/<int:id>/<int:qtdMoedas>', methods=["POST"])
-def EditarCliente(id, qtdMoedas):
+@app.route('/cliente/<int:id>', methods=["POST"]) 
+def EditarCliente(id):
     if request.method=='POST':
         try:
             amount = request.args.get('amount', type=float)
             cliente = Cliente.query.filter_by(id=id).first()
-            cliente.qtdMoedas = qtdMoedas
+            cliente.qtdMoeda += amount
             db.session.commit()
             return jsonify(['Alteracao feita com sucesso'])
         except Exception as e:
@@ -106,7 +106,7 @@ def EditarCliente(id, qtdMoedas):
 @app.route('/cliente/<int:id>', methods = ['DELETE'])
 def ApagarCliente(id):
     if(request.method == 'DELETE'):
-        objeto = Cliente.query.get(id)
+        objeto = db.session.get(Cliente, id)
         db.session.delete(objeto)
         db.session.commit()
 
@@ -138,8 +138,8 @@ def InserirSeletor(nome, ip):
 @app.route('/seletor/<int:id>', methods = ['GET'])
 def UmSeletor(id):
     if(request.method == 'GET'):
-        produto = Seletor.query.get(id)
-        return jsonify(produto)
+        objeto = db.session.get(Seletor, id)
+        return jsonify(objeto)
     else:
         return jsonify(['Method Not Allowed'])
 
@@ -167,12 +167,12 @@ def EditarSeletor(id, nome, ip, verdin):
 @app.route('/seletor/<int:id>', methods = ['DELETE'])
 def ApagarSeletor(id):
     if(request.method == 'DELETE'):
-        objeto = Seletor.query.get(id)
+        objeto = db.session.get(Seletor, id)
         db.session.delete(objeto)
         db.session.commit()
 
         data={
-            "message": "Validador Deletado com Sucesso"
+            "message": "Seletor Deletado com Sucesso"
         }
 
         return jsonify(data)
@@ -235,9 +235,9 @@ def CriaTransacao(rem, reb, valor):
                 if response.status_code == 200:
                     selected_validators = response.json().get("selected_validators")
                     print(f"Validadores selecionados: {selected_validators}")
+                    objeto.status = response.json().get("status")
+                    return jsonify(objeto)
                     # Enviar transação para validadores (omitir esta parte ou completar conforme necessidade)
-                    objeto.status = response.json().get('status')
-                    return(objeto)
                 else:
                     print(f"Erro ao comunicar com o seletor {seletor.ip}: {response.status_code}")
             except requests.exceptions.RequestException as e:
@@ -251,7 +251,7 @@ def CriaTransacao(rem, reb, valor):
 @app.route('/transacoes/<int:id>', methods = ['GET'])
 def UmaTransacao(id):
     if(request.method == 'GET'):
-        objeto = Transacao.query.get(id)
+        objeto = db.session.get(Transacao, id)
         return jsonify(objeto)
     else:
         return jsonify(['Method Not Allowed'])
