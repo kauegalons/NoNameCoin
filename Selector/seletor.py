@@ -84,10 +84,8 @@ def register_validator(name, stake):
 
         # Verificar resposta do validador
         if response.status_code == 200:
-            # Registro bem-sucedido
             return jsonify({"status": 1, "message": "Validador registrado com sucesso"}), 201
         else:
-            # Tratamento de erro
             return jsonify({"status": 2, "message": "Erro ao registrar validador"}), 400
     else:
         return jsonify({"status": 2, "message": "Método não permitido ou dados incompletos"}), 400
@@ -127,7 +125,6 @@ def select_validators():
             }
             print(data)
             response = requests.post(url, json=data)
-            # print("aaaaaaaaaaaaaa: ", response.json())
 
             if response.status_code != 200:
                 print(f"Erro ao comunicar com o validador {validador.name}: {response.status_code}")
