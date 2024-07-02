@@ -236,6 +236,8 @@ def CriaTransacao(rem, reb, valor):
                     selected_validators = response.json().get("selected_validators")
                     print(f"Validadores selecionados: {selected_validators}")
                     # Enviar transação para validadores (omitir esta parte ou completar conforme necessidade)
+                    objeto.status = response.json().get('status')
+                    return(objeto)
                 else:
                     print(f"Erro ao comunicar com o seletor {seletor.ip}: {response.status_code}")
             except requests.exceptions.RequestException as e:
