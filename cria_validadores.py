@@ -1,6 +1,7 @@
 import requests
 
-# =============================== REGISTRO DE VALIDADORES =============================== 
+# Registrando Validadores
+
 response = requests.post('http://localhost:5001/seletor/register/aaaaaaaaaa/10.0')
 print(response.text)
 response = requests.post('http://localhost:5001/seletor/register/b/69.0')
