@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # Caminho para o banco de dados
-db_path = os.path.join(os.getcwd(), 'Selector/bank')
+db_path = os.path.join(os.getcwd(), 'seletor/banco')
 db_file = 'seletor.db'
 if not os.path.exists(db_path):
     os.makedirs(db_path)
@@ -59,7 +59,6 @@ def generate_unique_key():
 def get_last_transaction_and_count(sender):
     current_time = datetime.now()
     one_minute_ago = current_time - timedelta(minutes=1)
-
     last_transaction = None
     transactions_last_minute_count = 0
 
@@ -149,37 +148,101 @@ def select_validators():
         return jsonify({"status": 2, "message": "Validadores insuficientes, transação em espera"}), 400
 
     selected_validators = select_based_on_stake(validadores)
+    validation_results = []
+
+    
 
     # Enviar transação para validadores selecionados
     for validador_id in selected_validators:
-        validador = Validador.query.get(validador_id)
+        validador = db.session.get(Validador, validador_id)
         try:
             url = f'http://localhost:5002/validador'
-            data = {
+            data_transaction = {
                 'transaction': transaction_details,
                 'validator_id': validador_id,
                 'unique_key': validador.unique_key
             }
-            response = requests.post(url, json=data)
-          
+            response = requests.post(url, json=data_transaction)
 
-            if response.status_code != 200:
+            if response.status_code == 200:
+                validation_results.append(response.json())
+            else:
                 print(f"Erro ao comunicar com o validador {validador.name}: {response.status_code}")
         except requests.exceptions.RequestException as e:
             print(f"Falha ao conectar ao validador {validador.name}: {e}")
 
-    return jsonify({"status": 1, "selected_validators": selected_validators})
+# a gente pode fazer o processo de eleição, se der poggers a gente atualiza os saldos, se der noggers cancela tudo
+    # Contadores para aprovações e reprovações
+    approved_count = sum(1 for result in validation_results if result['status'] == 1)
+    rejected_count = sum(1 for result in validation_results if result['status'] == 2)
 
+    # Verificando se há consenso
+    consensus = 'Aprovada' if approved_count > len(validation_results) / 2 else 'Nao Aprovada' if rejected_count > len(validation_results) / 2 else 'Sem consenso'
+
+
+    if consensus == 'Aprovada':
+        # Autorizar a transação e realizar a transferência de dinheiro
+        sender_id = data['sender']
+        receiver_id = data['receiver']
+        transaction_amount = data['transaction_amount']
+        fee = data['fee']
+        verdin = transaction_amount * fee
+        transaction_amount -= verdin
+        taxa_seletor = verdin/3
+        taxa_validadores = (verdin-taxa_seletor)/len(validadores)
+        response = requests.post(f'http://localhost:5000/seletor/{data["seletor_id"]}/{data["seletor_nome"]}/{data["seletor_ip"]}/{taxa_seletor:.2f}')
+        for validador in selected_validators:
+            validador = db.session.get(Validador, validador)
+            validador.stake += taxa_validadores
+            db.session.commit()
+
+        try:
+            # Atualizar saldo do remetente
+            sender_response = requests.post(f'http://localhost:5000/cliente/{sender_id}', params={'amount': -(transaction_amount)})
+
+            # Atualizar saldo do destinatário
+            receiver_response = requests.post(f'http://localhost:5000/cliente/{receiver_id}', params={'amount': transaction_amount})
+
+
+            if sender_response.status_code == 200 and receiver_response.status_code == 200:
+                return jsonify({"status": 1, "message": "Transacao aprovada e valores atualizados", "selected_validators": selected_validators, "validation_results": validation_results})
+            else:
+                return jsonify({"status": 2, "message": "Erro ao atualizar saldos dos usuarios"}), 400
+        except requests.exceptions.RequestException as e:
+            return jsonify({"status": 2, "message": f"Falha ao conectar ao serviço de atualização de saldo: {e}"}), 400
+    else:
+        return jsonify({"status": 2, "message": "Transacao nao aprovada", "selected_validators": selected_validators, "validation_results": validation_results}), 400
+@app.route('/seletor/delete/<int:id>', methods = ['DELETE'])
+def ApagarSeletor(id):
+    if(request.method == 'DELETE'):
+        objeto = db.session.get(Validador, id)
+        db.session.delete(objeto)
+        db.session.commit()
+        data={
+            "message": "Validador Deletado com Sucesso"
+        }
+
+        return jsonify(data)
+    else:
+        return jsonify(['Method Not Allowed'])
 
 def select_based_on_stake(validators):
     total_stake = sum(v.stake for v in validators)
     validator_weights = []
     for validator in validators:
+        # validador = Validador.query.filter_by(id=validator).first()
         weight = validator.stake
+        if validator.total_selections>10000:
+            validator.total_selections = 0
+            validator.flags -= 1
         if validator.flags == 1:
             weight *= 0.5
         elif validator.flags == 2:
             weight *= 0.25
+        elif validator.flags == 3:
+            weight *= 0 # stake == (stake * 2) - stake
+            validator.expulsions += 1
+            db.session.commit()
         
         max_weight = total_stake * 0.2
         weight = min(weight, max_weight)

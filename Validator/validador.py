@@ -80,20 +80,26 @@ def register_key():
     unique_keys.update({validator_id : unique_key})  # Armazenar a chave única associada ao ID do validador
     return jsonify({"status": 1, "message": "Chave registrada com sucesso"}), 200
 
+
+#Registra transação
 @app.route('/validador/register_transaction', methods=['POST'])
 def register_transaction():
     data = request.json
     transactions.append(data)
     return jsonify({"status": 1, "message": "Transação registrada com sucesso"}), 200
 
+#Retorna chaves unicas registradas
 @app.route('/validador/keys', methods=['GET'])
 def get_keys():
     return jsonify(unique_keys)
 
+
+#Retorna as contas e seus saldos 
 @app.route('/validador/accounts', methods=['GET'])
 def get_accounts():
     return jsonify(accounts)
 
+#Retorna as transações registradas
 @app.route('/validador/transactions', methods=['GET'])
 def get_transactions():
     return jsonify(transactions)

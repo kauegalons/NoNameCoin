@@ -17,21 +17,23 @@ class Cliente(db.Model):
     id: int
     nome: str
     senha: int
-    qtdMoeda: int
+    qtdMoeda: float
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(20), unique=False, nullable=False)
     senha = db.Column(db.String(20), unique=False, nullable=False)
-    qtdMoeda = db.Column(db.Integer, unique=False, nullable=False)
+    qtdMoeda = db.Column(db.Float, unique=False, nullable=False)
 @dataclass
 class Seletor(db.Model):
     id: int
     nome: str
     ip: str
+    stake: float
     
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(20), unique=False, nullable=False)
     ip = db.Column(db.String(15), unique=False, nullable=False)
+    stake = db.Column(db.Float, unique=False, nullable=False)
 
 @dataclass
 class Transacao(db.Model):
@@ -87,13 +89,14 @@ def UmCliente(id):
 def EditarCliente(id, qtdMoedas):
     if request.method=='POST':
         try:
+            amount = request.args.get('amount', type=float)
             cliente = Cliente.query.filter_by(id=id).first()
             cliente.qtdMoedas = qtdMoedas
             db.session.commit()
-            return jsonify(['Alteração feita com sucesso'])
+            return jsonify(['Alteracao feita com sucesso'])
         except Exception as e:
             data={
-                "message": "Atualização não realizada"
+                "message": "Atualizacao nao realizada"
             }
             return jsonify(data)
 
@@ -125,7 +128,7 @@ def ListarSeletor():
 @app.route('/seletor/<string:nome>/<string:ip>', methods = ['POST'])
 def InserirSeletor(nome, ip):
     if request.method=='POST' and nome != '' and ip != '':
-        objeto = Seletor(nome=nome, ip=ip)
+        objeto = Seletor(nome=nome, ip=ip, stake=0.0)
         db.session.add(objeto)
         db.session.commit()
         return jsonify(objeto)
@@ -140,8 +143,8 @@ def UmSeletor(id):
     else:
         return jsonify(['Method Not Allowed'])
 
-@app.route('/seletor/<int:id>/<string:nome>/<string:ip>', methods=["POST"])
-def EditarSeletor(id, nome, ip):
+@app.route('/seletor/<int:id>/<string:nome>/<string:ip>/<float:verdin>', methods=["POST"])
+def EditarSeletor(id, nome, ip, verdin):
     if request.method=='POST':
         try:
             varNome = nome
@@ -150,6 +153,7 @@ def EditarSeletor(id, nome, ip):
             db.session.commit()
             validador.nome = varNome
             validador.ip = varIp
+            validador.stake += verdin
             db.session.commit()
             return jsonify(validador)
         except Exception as e:
@@ -211,13 +215,16 @@ def CriaTransacao(rem, reb, valor):
             try:
                 url = f'http://127.0.0.1:5001/seletor/select'
                 data = {
+                    'seletor_id': seletor.id,
+                    'seletor_nome': seletor.nome,
+                    'seletor_ip': seletor.ip,
                     'transaction_id': objeto.id,
                     'transaction_amount': valor,
                     'sender': rem,
                     'sender_amount': sender_amount['qtdMoeda'],  # Adicionando o saldo do remetente
                     'receiver': reb,
                     'receiver_amount': receiver_amount['qtdMoeda'],
-                    'fee': 1,  # Adicione uma lógica para definir a taxa se necessário
+                    'fee': 0.015,  # Adicione uma lógica para definir a taxa se necessário
                     'timestamp': objeto.horario.isoformat()
                 }
                 print(f"Enviando requisição para o seletor: {url} com dados: {data}")
@@ -233,7 +240,6 @@ def CriaTransacao(rem, reb, valor):
                     print(f"Erro ao comunicar com o seletor {seletor.ip}: {response.status_code}")
             except requests.exceptions.RequestException as e:
                 print(f"Falha ao conectar ao seletor {seletor.ip}: {e}")
-
         return jsonify(objeto)
     else:
         print("Método não permitido")
