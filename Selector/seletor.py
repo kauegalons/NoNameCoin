@@ -1,123 +1,165 @@
+# Outras importações
 from flask import Flask, request, jsonify
+import random
+import requests
+import os
+import secrets
+import string
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-import requests
-import random
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///seletor.db'
+# Caminho para o banco de dados
+db_path = os.path.join(os.getcwd(), 'seletor/banco')
+db_file = 'seletor.db'
+if not os.path.exists(db_path):
+    os.makedirs(db_path)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(db_path, db_file)}'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 @dataclass
-class Transacao(db.Model):
-    id: int
-    remetente: int
-    recebedor: int
-    valor: int
-    horario: datetime
-    status: int
-
-    id = db.Column(db.Integer, primary_key=True)
-    remetente = db.Column(db.Integer, nullable=False)
-    recebedor = db.Column(db.Integer, nullable=False)
-    valor = db.Column(db.Integer, nullable=False)
-    horario = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.Integer, nullable=False, default=0)
-
-@dataclass
 class Validador(db.Model):
     id: int
-    chave: str
-    flag: int = 0
-    hold: int = 0
-    qtdMoeda: int
+    name: str
+    stake: float
+    flags: int
+    in_hold: bool
+    hold_count: int
+    last_selected: int
+    coherent_transactions: int
+    consecutive_selections: int
+    expulsions: int
+    total_selections: int
+    unique_key: str  # Alterado para tipo str
 
     id = db.Column(db.Integer, primary_key=True)
-    chave = db.Column(db.String(100), nullable=False)
-    flag = db.Column(db.Integer, nullable=False, default=0)
-    hold = db.Column(db.Integer, nullable=False, default=0)
-    qtdMoeda = db.Column(db.Integer, nullable=False)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    stake = db.Column(db.Float, nullable=False)
+    flags = db.Column(db.Integer, nullable=False, default=0)
+    in_hold = db.Column(db.Boolean, nullable=False, default=False)
+    hold_count = db.Column(db.Integer, nullable=False, default=0)
+    last_selected = db.Column(db.Integer, nullable=False, default=0)
+    coherent_transactions = db.Column(db.Integer, nullable=False, default=0)
+    consecutive_selections = db.Column(db.Integer, nullable=False, default=0)
+    expulsions = db.Column(db.Integer, nullable=False, default=0)
+    total_selections = db.Column(db.Integer, nullable=False, default=0)
+    unique_key = db.Column(db.String(16), nullable=False)  # Chave única como string
 
-with app.app_context():
-    db.create_all()
+def generate_unique_key():
+    alphabet = string.ascii_letters + string.digits
+    unique_key = ''.join(secrets.choice(alphabet) for i in range(16))  # 16 caracteres de comprimento
+    return unique_key
 
 @app.route("/")
 def index():
-    return jsonify(['Seletor ativo!'])
+    return jsonify(['API sem interface do banco!'])
 
-@app.route('/seletor/validadores', methods=['POST'])
-def cadastrar_validador():
-    dados = request.get_json()
-    chave = dados.get('chave')
-    qtdMoeda = dados.get('qtdMoeda')
-
-    if not chave or not qtdMoeda:
-        return jsonify({'message': 'Dados incompletos'}), 400
+@app.route('/seletor/register/<string:name>/<float:stake>', methods=['POST'])
+def register_validator(name, stake):
     
-    if qtdMoeda < 50:
-        return jsonify({'message': 'Saldo mínimo para cadastro é 50 NoNameCoins'}), 400
-
-    validador = Validador(chave=chave, qtdMoeda=qtdMoeda)
-    db.session.add(validador)
-    db.session.commit()
-    return jsonify(validador)
-
-@app.route('/seletor/transacoes/<int:transacao_id>', methods=['POST'])
-def selecionar_validadores(transacao_id):
-    transacao = Transacao.query.get(transacao_id)
-
-    if not transacao:
-        return jsonify({'message': 'Transação não encontrada'}), 404
+    existing_validator = Validador.query.filter_by(name=name).first()
+    if existing_validator:
+        return jsonify({"status": 2, "message": "Validador já registrado"}), 400
     
-    validadores = Validador.query.filter(Validador.flag < 3, Validador.hold == 0).all()
-    if len(validadores) < 3:
-        transacao.horario = datetime.now() + timedelta(minutes=1)
+    if stake < 50.0:
+        return jsonify({"status": 2, "message": "Saldo mínimo insuficiente"}), 400
+
+    if request.method == 'POST' and name != '':
+        # Criar objeto Validador e adicionar ao banco de dados
+        objeto = Validador(name=name, stake=stake, flags=0, in_hold=False, hold_count=0, last_selected=0, coherent_transactions=0, consecutive_selections=0, expulsions=0, total_selections=0, unique_key="")
+        db.session.add(objeto)
         db.session.commit()
-        return jsonify({'message': 'Transação em espera, não há validadores suficientes'}), 200
 
-    selecao_validadores = random.choices(validadores, k=3)
-
-    resultados = []
-    for validador in selecao_validadores:
-        url = f"http://{validador.chave}/transacoes"
-        resposta = requests.post(url, json={'id': transacao_id})
-        if resposta.status_code == 200:
-            resultados.append(resposta.json())
-
-    consensos = [resultado['status'] for resultado in resultados if 'status' in resultado]
-    if consensos.count(1) > 1:
-        transacao.status = 1
-        # Distribui a taxa entre os validadores
-        taxa = transacao.valor * 0.015
-        for validador in selecao_validadores:
-            validador.qtdMoeda += taxa / 3
+        # Gerar e enviar chave única para o validador registrado
+        unique_key = generate_unique_key()  # Implemente sua lógica para gerar a chave única
+        objeto.unique_key = unique_key  # Atualiza o campo no objeto
         db.session.commit()
-        return jsonify({'message': 'Transação validada com sucesso', 'transacao': transacao}), 200
+
+        # Enviar chave única ao servidor de validadores
+        response = requests.post(f'http://localhost:5002/validador/register_key', json={"validator_id": objeto.id, "unique_key": unique_key})
+
+        # Verificar resposta do validador
+        if response.status_code == 200:
+            # Registro bem-sucedido
+            return jsonify({"status": 1, "message": "Validador registrado com sucesso"}), 201
+        else:
+            # Tratamento de erro
+            return jsonify({"status": 2, "message": "Erro ao registrar validador"}), 400
     else:
-        transacao.status = 2
-        db.session.commit()
-        return jsonify({'message': 'Transação não validada', 'transacao': transacao}), 200
+        return jsonify({"status": 2, "message": "Método não permitido ou dados incompletos"}), 400
 
-@app.route('/seletor/flag/<int:validador_id>', methods=['POST'])
-def adicionar_flag(validador_id):
-    validador = Validador.query.get(validador_id)
-    if not validador:
-        return jsonify({'message': 'Validador não encontrado'}), 404
+@app.route('/seletor/select', methods=['POST'])
+def select_validators():
+    data = request.json
+    print(data)
+    transaction_id = data['transaction_id']
+    transaction_details = {
+        'id': transaction_id,
+        'sender': data['sender'],
+        'sender_amount': data['sender_amount'],
+        'receiver': data['receiver'],
+        'receiver_amount': data['receiver_amount'],
+        'amount': data['transaction_amount'],
+        'fee': data['fee'],
+        'timestamp': data['timestamp']
+    }
     
-    validador.flag += 1
-    if validador.flag > 2:
-        db.session.delete(validador)
-        db.session.commit()
-        return jsonify({'message': 'Validador removido da rede'}), 200
+    validadores = Validador.query.filter_by(in_hold=False).all()
 
-    db.session.commit()
-    return jsonify({'message': 'Flag adicionada ao validador', 'flag': validador.flag}), 200
+    if len(validadores) < 3:
+        return jsonify({"status": 2, "message": "Validadores insuficientes, transação em espera"}), 400
 
-if __name__ == "__main__":
+    selected_validators = select_based_on_stake(validadores)
+
+    # Enviar transação para validadores selecionados
+    for validador_id in selected_validators:
+        validador = Validador.query.get(validador_id)
+        try:
+            url = f'http://localhost:5002/validador'
+            data = {
+                'transaction': transaction_details,
+                'validator_id': validador_id,
+                'unique_key': validador.unique_key
+            }
+            print(data)
+            response = requests.post(url, json=data)
+            # print("aaaaaaaaaaaaaa: ", response.json())
+
+            if response.status_code != 200:
+                print(f"Erro ao comunicar com o validador {validador.name}: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            print(f"Falha ao conectar ao validador {validador.name}: {e}")
+
+    return jsonify({"status": 1, "selected_validators": selected_validators})
+
+
+def select_based_on_stake(validators):
+    total_stake = sum(v.stake for v in validators)
+    validator_weights = []
+    for validator in validators:
+        weight = validator.stake
+        if validator.flags == 1:
+            weight *= 0.5
+        elif validator.flags == 2:
+            weight *= 0.25
+        
+        max_weight = total_stake * 0.2
+        weight = min(weight, max_weight)
+        validator_weights.extend([validator.id] * int(weight))
+
+    selected_validators = []
+    while len(selected_validators) < 3:
+        selected = random.choice(validator_weights)
+        if selected not in selected_validators:
+            selected_validators.append(selected)
+
+    return selected_validators
+
+if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(host='0.0.0.0', port=5002, debug=True)
+    app.run(debug=True, port=5001)
