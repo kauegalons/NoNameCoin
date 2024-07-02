@@ -13,21 +13,7 @@ accounts = {
     "user1": {"balance": 1000, "last_transaction_time": None, "transaction_count": 0, "last_block_time": None, "block_duration": 60},
     "user2": {"balance": 500, "last_transaction_time": None, "transaction_count": 0, "last_block_time": None, "block_duration": 60},
 }
-# pesquisar no banco última transação
-# pesquisar no banco quantidade das últimas transações realizadas pelo remetente
 
-# transactions = [
-#     {
-#         "id": 1,
-#         "sender": "user1",
-#         "receiver": "user2",
-#         "amount": 100,
-#         "fee": 1,
-#         "timestamp": "2024-06-01T12:00:00",
-#         "status": 0,
-#         "unique_key": None
-#     }
-# ]
 def initialize_account(account_id):
     if account_id not in accounts:
         accounts[account_id] = {
